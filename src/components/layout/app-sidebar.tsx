@@ -39,10 +39,10 @@ const mainNavItems = [
 
 const erpModules = [
   { icon: Users, label: "CRM", href: "/crm" },
-  { icon: ShoppingCart, label: "Sales & Orders", href: "/entities?tab=orders" },
-  { icon: Package, label: "Inventory", href: "/entities?tab=inventory" },
+  { icon: ShoppingCart, label: "Sales & Orders", href: "/sales" },
+  { icon: Package, label: "Inventory", href: "/inventory" },
+  { icon: Briefcase, label: "Purchases", href: "/purchases" },
   { icon: Calculator, label: "Accounting", href: "/accounting" },
-  { icon: Briefcase, label: "HR & Payroll", href: "/hr" },
   { icon: LifeBuoy, label: "Helpdesk", href: "/helpdesk" },
 ];
 
@@ -53,11 +53,11 @@ export function AppSidebar() {
     <Sidebar variant="sidebar" collapsible="icon">
       <SidebarHeader className="p-6">
         <div className="flex items-center gap-3">
-          <div className="size-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-bold text-xl shadow-lg">
+          <div className="size-8 rounded-none bg-foreground flex items-center justify-center text-background font-bold text-xl shadow-lg border border-border">
             S
           </div>
           <span className="font-headline font-bold text-lg tracking-tight group-data-[collapsible=icon]:hidden">
-            Synocre <span className="text-primary">Connect</span>
+            Synocre Connect
           </span>
         </div>
       </SidebarHeader>

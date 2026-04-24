@@ -4,8 +4,8 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { 
-  predictStockDemandTool, 
-  getSalesSummaryTool, 
+  checkStockLevelTool, 
+  getFinancialSummaryTool, 
   getCustomerInsightsTool 
 } from '../tools';
 
@@ -29,7 +29,7 @@ export const erpAgent = ai.defineFlow(
       Use them to answer user questions about business performance, stock levels, and customer insights.
       Always encourage reorder drafts if stock is low.`,
       history: input.history,
-      tools: [predictStockDemandTool, getSalesSummaryTool, getCustomerInsightsTool],
+      tools: [checkStockLevelTool, getFinancialSummaryTool, getCustomerInsightsTool],
     }).send(input.message);
 
     return {

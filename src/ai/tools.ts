@@ -1,70 +1,78 @@
-
 import { ai } from './genkit';
 import { z } from 'genkit';
+import { getProducts, getOrders, getCustomers } from '../lib/local-db';
 
-export const predictStockDemandTool = ai.defineTool(
+export const checkStockLevelTool = ai.defineTool(
   {
-    name: 'predictStockDemand',
-    description: 'Predicts the future demand for a specific product based on historical sales velocity.',
+    name: 'checkStockLevel',
+    description: 'Retrieves the current stock level, cost price, and status of a specific product from the inventory database.',
     inputSchema: z.object({
-      productName: z.string().describe('The name of the product to forecast.'),
-      forecastPeriodDays: z.number().default(30).describe('The number of days into the future to forecast (e.g., 30, 90).'),
+      productNameOrSku: z.string().describe('The exact or partial name/SKU of the product to look up.'),
     }),
     outputSchema: z.object({
       productName: z.string(),
+      sku: z.string(),
       currentStock: z.number(),
-      predictedDemand: z.number(),
-      suggestedReorder: z.number(),
-      dailyVelocity: z.string(),
-      message: z.string(),
+      lowStockThreshold: z.number(),
+      status: z.string(),
+      costPrice: z.number(),
+      sellingPrice: z.number(),
     }),
   },
   async (input) => {
-    // In a real app, this would query a database. 
-    // For this prototype, we'll use deterministic logic based on mock data patterns.
-    const dailyVelocity = (Math.random() * 2 + 0.5).toFixed(2);
-    const dailyVelocityNum = parseFloat(dailyVelocity);
-    const predictedDemand = Math.ceil(dailyVelocityNum * input.forecastPeriodDays);
+    const products = await getProducts();
+    const query = input.productNameOrSku.toLowerCase();
     
-    // Using some fixed stock values for simulation
-    const currentStock = Math.floor(Math.random() * 200);
-    const deficit = predictedDemand > currentStock ? predictedDemand - currentStock : 0;
+    const product = products.find(p => 
+      p.name.toLowerCase().includes(query) || p.sku.toLowerCase().includes(query)
+    );
+
+    if (!product) {
+      throw new Error(`Product not found matching: ${input.productNameOrSku}`);
+    }
+
+    const isLowStock = product.currentStock <= product.lowStockThreshold;
 
     return {
-      productName: input.productName,
-      currentStock,
-      predictedDemand,
-      suggestedReorder: deficit,
-      dailyVelocity,
-      message: deficit > 0 
-        ? `Warning: Current stock of ${currentStock} is insufficient for predicted demand of ${predictedDemand}.` 
-        : `Stock levels for ${input.productName} are healthy for the next ${input.forecastPeriodDays} days.`,
+      productName: product.name,
+      sku: product.sku,
+      currentStock: product.currentStock,
+      lowStockThreshold: product.lowStockThreshold,
+      status: isLowStock ? 'LOW STOCK WARNING' : 'HEALTHY',
+      costPrice: product.costPrice,
+      sellingPrice: product.sellingPrice,
     };
   }
 );
 
-export const getSalesSummaryTool = ai.defineTool(
+export const getFinancialSummaryTool = ai.defineTool(
   {
-    name: 'getSalesSummary',
-    description: 'Aggregates sales revenue and order counts for a specific date range.',
-    inputSchema: z.object({
-      startDate: z.string().describe('The start date of the period in YYYY-MM-DD format.'),
-      endDate: z.string().describe('The end date of the period in YYYY-MM-DD format.'),
-    }),
+    name: 'getFinancialSummary',
+    description: 'Aggregates sales revenue and expenses to calculate real-time net profit.',
+    inputSchema: z.object({}), // No inputs needed
     outputSchema: z.object({
-      period: z.string(),
-      orderCount: z.number(),
-      totalRevenue: z.string(),
-      topCustomer: z.string(),
+      totalRevenue: z.number(),
+      totalExpenses: z.number(),
+      netProfit: z.number(),
+      salesOrderCount: z.number(),
+      purchaseOrderCount: z.number(),
     }),
   },
-  async (input) => {
-    // Simulated aggregation
+  async () => {
+    const orders = await getOrders();
+    
+    const salesOrders = orders.filter(o => o.type === "sales_order" && o.status === "confirmed");
+    const purchaseOrders = orders.filter(o => o.type === "purchase_order" && o.status === "fulfilled");
+    
+    const totalRevenue = salesOrders.reduce((sum, order) => sum + order.totalAmount, 0);
+    const totalExpenses = purchaseOrders.reduce((sum, order) => sum + order.totalAmount, 0);
+    
     return {
-      period: `${input.startDate} to ${input.endDate}`,
-      orderCount: Math.floor(Math.random() * 50) + 10,
-      totalRevenue: `$${(Math.random() * 50000 + 10000).toLocaleString()}`,
-      topCustomer: 'Initech',
+      totalRevenue,
+      totalExpenses,
+      netProfit: totalRevenue - totalExpenses,
+      salesOrderCount: salesOrders.length,
+      purchaseOrderCount: purchaseOrders.length,
     };
   }
 );
@@ -72,25 +80,34 @@ export const getSalesSummaryTool = ai.defineTool(
 export const getCustomerInsightsTool = ai.defineTool(
   {
     name: 'getCustomerInsights',
-    description: 'Retrieves CRM profile and lifetime value for a specific customer.',
+    description: 'Retrieves CRM profile for a specific customer.',
     inputSchema: z.object({
-      customerName: z.string().describe('The name of the customer to look up.'),
+      customerName: z.string().describe('The name or email of the customer to look up.'),
     }),
     outputSchema: z.object({
       name: z.string(),
+      email: z.string(),
       industry: z.string(),
-      lifetimeValue: z.string(),
-      totalOrders: z.number(),
-      lastPurchaseDate: z.string(),
+      status: z.string(),
     }),
   },
   async (input) => {
+    const customers = await getCustomers();
+    const query = input.customerName.toLowerCase();
+    
+    const customer = customers.find(c => 
+      c.name.toLowerCase().includes(query) || c.email.toLowerCase().includes(query)
+    );
+
+    if (!customer) {
+      throw new Error(`Customer not found matching: ${input.customerName}`);
+    }
+
     return {
-      name: input.customerName,
-      industry: 'Technology',
-      lifetimeValue: '$145,000',
-      totalOrders: 12,
-      lastPurchaseDate: '2023-10-25',
+      name: customer.name,
+      email: customer.email,
+      industry: customer.industry,
+      status: customer.status,
     };
   }
 );
